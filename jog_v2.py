@@ -5,6 +5,7 @@ from PIL import Image, ImageTk
 from collections import defaultdict
 import argparse
 import cv2
+import pickle
 
 class Application:
     def __init__(self, output_path = "./"):
@@ -24,8 +25,9 @@ class Application:
         self.temp_images = []
         self.left_rect_list = {}
         self.right_rect_list = {}
+        self.global_cell_states = defaultdict(dict)
         self.current_frame = 0
-        self.n = 5
+        self.n = 7
 
         self.width, self.height = self.img.width(), self.img.height()
         # Padding stuff: xsize, ysize is the cell size in pixels (without pad).
@@ -49,7 +51,7 @@ class Application:
         self.left_imageFrame.create_image(0,0,image=self.img, anchor="nw")
         self.left_imageFrame.pack(side="left")
 
-
+        # self.label_frame = tk.Label(self.images_frame, text=str(self.current_frame))
         # Create a label which displays the camera feed
         self.center_imageFrame = tk.Frame(self.images_frame,width=512, height=360)
         self.center_imageFrame.pack(side="left")
@@ -162,6 +164,8 @@ class Application:
                     self.left_cell_state[i]["clicked"] = False
                     self.left_imageFrame.delete(self.left_rect_list[i])
                     # print(self.left_cell_state[i])
+                
+                self.global_cell_states[self.current_frame]["left"] = self.left_cell_state[i]
     
     def right_click_callback(self,event):
             """Function called when someone clicks on the grid canvas."""
@@ -186,9 +190,41 @@ class Application:
                 else:
                     self.right_cell_state[i]["clicked"] = False
                     self.right_imageFrame.delete(self.right_rect_list[i])
+                
+                self.global_cell_states[self.current_frame]["right"] = self.right_cell_state[i]
 
+    def load_saved_states(self,filename):
+        with open(filename, 'rb') as f:
+            self.global_cell_states = pickle.load(f)
+
+    def save_states(self,filename):
+        with open(filename, 'wb') as f:
+            pickle.dump(self.global_cell_states, f)
     
-    
+    def draw_saved_states(self,frame_number):
+        self.left_cell_state = self.global_cell_states[frame_number].get("left")
+        self.right_cell_state = self.global_cell_states[frame_number].get("right")
+        # print(left_states)
+        # if left_states is not None:
+        #     for i in left_states.keys():
+        #         print(i,type(i))
+        #         if left_states["clicked"]:
+        #             im = self.create_translucent_rectangle(self.left_imageFrame,left_states[i]["coordinates"][0]
+        #                                                 ,left_states[i]["coordinates"][1],
+        #                                                 left_states[i]["coordinates"][2],
+        #                                                 left_states[i]["coordinates"][3],
+        #                                                 fill="red",alpha=0.5)
+        #             self.left_rect_list[i] = im
+        # if right_states is not None:
+        #     for i in right_states.keys():
+        #         if right_states[i]["clicked"]:
+        #             im = self.create_translucent_rectangle(self.right_imageFrame,right_states[i]["coordinates"][0],
+        #                                                 right_states[i]["coordinates"][1],
+        #                                                 right_states[i]["coordinates"][2],
+        #                                                 right_states[i]["coordinates"][3],
+        #                                                 fill="red",alpha=0.5)
+
+                
     def update_next_sides(self,image):
         """ Update canvas when next is clicked """
         # cv2image = cv2.cvtColor(self.img, cv2.COLOR_BGR2RGBA)  # convert colors from BGR to RGBA
@@ -220,12 +256,14 @@ class Application:
             self.current_frame -= 1
             self.current_image = self.prev_images.pop()
             self.update_prev_sides(self.current_image)
+            # self.draw_saved_states(self.current_frame)
             # self.update_right(self.current_image)
             cv2image = cv2.cvtColor(self.current_image, cv2.COLOR_BGR2RGBA)
-            self.current_image = Image.fromarray(cv2image)  
+            self.current_image = Image.fromarray(cv2image)
             imgtk = ImageTk.PhotoImage(image=self.current_image)
             self.center_panel.imgtk = imgtk
             self.center_panel.config(image=imgtk)
+
 
     def next_frame(self,*_):
         """ Get frame from the video stream and show it in Tkinter """
@@ -239,6 +277,9 @@ class Application:
             imgtk = ImageTk.PhotoImage(image=self.current_image)  # convert image for tkinter
             self.center_panel.imgtk = imgtk  # anchor imgtk so it does not be deleted by garbage-collector
             self.center_panel.config(image=imgtk)  # show the image
+            #display frame number
+            self.left_imageFrame.create_text(20,20,text=str(self.current_frame),anchor="nw")
+            # self.label_frame.config(text=str(self.current_frame))
         # self.window.after(30, self.video_loop)  # call the same function after 30 milliseconds
 
     def _get_cell_coords(self, i):

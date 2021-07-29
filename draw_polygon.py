@@ -40,10 +40,10 @@ class PolygonDrawer(object):
 
     def run(self):
         # Let's create our working window and set a mouse callback to handle events
-        cv2.namedWindow(self.window_name, flags=cv2.CV_WINDOW_AUTOSIZE)
+        cv2.namedWindow(self.window_name, flags=cv2.WINDOW_NORMAL)
         cv2.imshow(self.window_name, np.zeros(CANVAS_SIZE, np.uint8))
         cv2.waitKey(1)
-        cv2.cv.SetMouseCallback(self.window_name, self.on_mouse)
+        cv2.setMouseCallback(self.window_name, self.on_mouse)
 
         while(not self.done):
             # This is our drawing loop, we just continuously draw new images
